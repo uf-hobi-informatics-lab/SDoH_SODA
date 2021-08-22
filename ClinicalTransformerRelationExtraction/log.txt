@@ -1,0 +1,12 @@
+2021-06-16 22:24:21 - Transformer_Relation_Extraction - INFO - Init new model...
+2021-06-16 22:24:22 - Transformer_Relation_Extraction - INFO - label to index:
+{'1': 0, '0': 1}
+2021-06-16 22:24:40 - Transformer_Relation_Extraction - INFO - create train examples...and will cache the processed data at /home/zehao.yu/workspace/py3/data/dr_relation_aio_th1/cached_bert_0_512_bert-base-uncased_train.pkl
+2021-06-16 22:25:58 - Transformer_Relation_Extraction - INFO - Init new model...
+2021-06-16 22:25:58 - Transformer_Relation_Extraction - INFO - label to index:
+{'0': 0, '1': 1}
+2021-06-16 22:26:05 - Transformer_Relation_Extraction - INFO - create train examples...and will cache the processed data at /home/zehao.yu/workspace/py3/data/dr_relation_aio_th1/cached_bert_0_512_bert-base-uncased_train.pkl
+2021-06-16 22:27:37 - Transformer_Relation_Extraction - INFO - Init new model...
+2021-06-16 22:27:37 - Transformer_Relation_Extraction - INFO - label to index:
+{'0': 0, '1': 1}
+2021-06-16 22:27:44 - Transformer_Relation_Extraction - INFO - create train examples...and will cache the processed data at /home/zehao.yu/workspace/py3/data/dr_relation_aio_th1/cached_bert_0_512_bert-base-uncased_train.pkl
