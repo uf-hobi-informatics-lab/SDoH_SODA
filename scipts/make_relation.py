@@ -279,6 +279,8 @@ def create_test_samples(file_path, valids=None, valid_comb=None):
             preds[pred_s[0]].append(pred_s)
             
     return preds
+
+
 def en_sent_id(en_pos, send_bound):
     e_s = en_pos[0]
     e_e = en_pos[1]
@@ -313,7 +315,6 @@ def extract_entity_comb_for_relation(e2idx, entities, rels, sent_bound):
 
 
 def to_tsv(data, fn):
-    print(data)
     header = "\t".join([str(i+1) for i in range(len(data[0]))])
     with open(fn, "w") as f:
         f.write(f"{header}\n")
