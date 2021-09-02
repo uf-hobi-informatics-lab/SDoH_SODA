@@ -12,8 +12,10 @@ import fileinput
 from annotation2BIO import generate_BIO, pre_processing, read_annotation_brat, BIOdata_to_file
 MIMICIII_PATTERN = "\[\*\*|\*\*\]"
 
+
 data_dir=sys.argv[1]
 output_name=sys.argv[2]
+
 #data stat
 file_ids = set()
 enss = []
@@ -23,12 +25,14 @@ for fn in Path(data_dir).glob("*.ann"):
     _, ens, _ = read_annotation_brat(fn)
     #print( _)
     enss.extend(ens)
-print("test files: ", len(file_ids), list(file_ids)[:5])
-print("total test eneitites: ", len(enss))
+
+print("number of test files: ", len(file_ids))
+print("total number of test eneitites: ", len(enss))
 print("Entities distribution by types:\n", "\n".join([str(c) for c in Counter([each[1] for each in enss]).most_common()]))
+
 # generate bio
 test_root = Path(data_dir)
-test_bio = "./bio/"+output_name
+test_bio = "../temp/"+output_name
 output_root = Path(test_bio)
 output_root.mkdir(parents=True, exist_ok=True)
 

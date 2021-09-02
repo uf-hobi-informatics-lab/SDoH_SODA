@@ -6,6 +6,8 @@ from itertools import permutations, combinations
 from functools import reduce
 import numpy as np
 import os
+
+
 def pkl_save(data, file):
     with open(file, "wb") as f:
         pkl.dump(data, f)
@@ -26,6 +28,8 @@ def load_text(ifn):
 def save_text(text, ofn):
     with open(ofn, "w") as f:
         f.write(text)
+
+
 import sys
 # https://github.com/uf-hobi-informatics-lab/NLPreprocessing (git clone this repo to local)
 sys.path.append("../NLPreprocessing/")
@@ -36,8 +40,12 @@ from sentence_tokenization import logger as l1
 from annotation2BIO import logger as l2
 l1.disabled = True
 l2.disabled = True
+
+
 data_dir=sys.argv[1]
 output_name=sys.argv[2]
+
+
 def create_entity_to_sent_mapping(nnsents, entities, idx2e):
     loc_ens = []
     
@@ -115,13 +123,11 @@ def format_relen(en, rloc, nsents):
     ors =  " ".join(target_sent)
     
     if sn1 != sn2:
-#         print("[!!!Warning] The entity is not in the same sentence\n", en)
         tt = nsents[sn2]
         tt = [each[0] for each in tt]
         target_sent.insert(tn1, spec1)
         tt.insert(tn2+1, spec2)
         target_sent = target_sent + tt
-#         print(target_sent)
     else:
         target_sent.insert(tn1, spec1)
         target_sent.insert(tn2+2, spec2)
@@ -226,7 +232,6 @@ def create_training_samples(file_path, valids=None, valid_comb=None):
         i2e = {v: k for k, v in e2i.items()}
         
         nsents, sent_bound = generate_BIO(sents, ens, file_id="", no_overlap=False, record_pos=True)
-        print(nsents)
         total_len = len(nsents)
         nnsents = [w for sent in nsents for w in sent]
         mappings = create_entity_to_sent_mapping(nnsents, ens, i2e)
@@ -305,7 +310,10 @@ def extract_entity_comb_for_relation(e2idx, entities, rels, sent_bound):
         e2_n = en_sent_id(en2_pos, sent_bound)
         rl.append(abs(e1_n-e2_n))
     return rn, rl
+
+
 def to_tsv(data, fn):
+    print(data)
     header = "\t".join([str(i+1) for i in range(len(data[0]))])
     with open(fn, "w") as f:
         f.write(f"{header}\n")
@@ -343,7 +351,7 @@ def all_in_one(*dd, dn="2018n2c2", do_train=True):
             for each in v:
                 data.append(each[1:])
     
-    output_path = f"./temp/{dn}_aio_th{CUTOFF}"
+    output_path = f"../temp/{dn}_aio_th{CUTOFF}"
     p = Path(output_path)
     p.mkdir(parents=True, exist_ok=True)
     
@@ -364,7 +372,7 @@ def all_in_unique(*dd, dn="2018n2c2", do_train=True):
                     if k == idx:
                         data.append(each[1:])
         
-        output_path = f"./temp/{dn}_aiu_th{CUTOFF}"
+        output_path = f"../temp/{dn}_aiu_th{CUTOFF}"
         p = Path(output_path) / f"cutoff_{idx}"
         p.mkdir(parents=True, exist_ok=True)
         if do_train:
@@ -373,6 +381,8 @@ def all_in_unique(*dd, dn="2018n2c2", do_train=True):
                 to_5_cv(data, p.as_posix())
         else:
             to_tsv(data, p/"test.tsv")
+
+
 # general pre-defined special tags
 EN1_START = "[s1]"
 EN1_END = "[e1]"
@@ -385,6 +395,7 @@ CUTOFF = 1
 OUTPUT_CV = False
 # do binary classification (if false, then we do multiclass classification)
 DO_BIN = False
+
 sdoh_valid_comb = {
         ('Tobacco_use', 'Substance_use_status'), ('Substance_use_status', 'Smoking_type'),
         ('Substance_use_status', 'Smoking_freq_ppd'), ('Substance_use_status', 'Smoking_freq_py'), 
@@ -404,9 +415,8 @@ sdoh_valid_comb = {
         ('Race', 'Sdoh_status'), ('Ethnicity', 'Sdoh_status'),
         ('Living_Condition', 'Sdoh_status')
     }
-#test_root='/data/datasets/zehao/sdoh/res/lung_cancer_formatted_output'
 
-test_root=f'./result/NER/{output_name}_formatted_output'
+test_root=f'../temp/{output_name}_formatted_output'
 preds = create_test_samples(test_root, None, sdoh_valid_comb)
 all_in_one(preds, dn=output_name, do_train=False)
 

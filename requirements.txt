@@ -1,0 +1,6 @@
+torch
+transformers
+tqdm
+numpy
+scikit-learn
+packaging
