@@ -36,4 +36,4 @@ bash run_pred.sh -i <input data directory> -c gpu_id
 - in the main directory (./SDoH_NLPend2end), we will create three directories for outputs
 - the first is ./logs which saves all the running logs
 - the second is ./temp which saves all the intermediate generated files
-- the third is ./results where the eval_results.txt is the final performance measurement, the rest directories are the e2e outputs
+- the third is ./results where the eval_results.txt stores the final performance measurement and the rest directories are the e2e outputs
