@@ -19,10 +19,10 @@
   
 
 # Usage
-- download the models and unzip into this directory you should have:
+- download the models and unzip into this project root directory, you should have:
     - ./models/ner_bert
     - ./models/re_bert
-- cd to the ```./scripts``` directory
+- then, cd to the ```./scripts``` directory
 - execute pipeline as 
 ```shell
 bash run_pred.sh -i <input data directory> -c gpu_id
