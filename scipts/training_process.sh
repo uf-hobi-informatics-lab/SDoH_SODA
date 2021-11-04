@@ -11,11 +11,13 @@ echo "CUDA used: $cuda";
 export CUDA_VISIBLE_DEVICES=$cuda
 output_dir=../results
 output_name=bio_training
+mkdir ../models/SDOH_bert_updated_150
+mkdir ../models/SDOH_bert_updated_100
 mkdir ${output_dir}
 python3 ./training_ner.py $input_dir 
 python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --model_type bert \
-      --pretrained_model ../models/SDOH_bert_final \
+      --pretrained_model ../models/ner_bert \
       --data_dir ../bio/bio_training_150 \
       --new_model_dir ../models/SDOH_bert_updated_150 \
       --overwrite_model_dir \
@@ -28,7 +30,7 @@ python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --train_batch_size 8 \
       --train_steps 1000 \
       --learning_rate 1e-5 \
-      --num_train_epochs 30 \
+      --num_train_epochs 2 \
       --gradient_accumulation_steps 1 \
       --do_warmup \
       --seed 13 \
@@ -60,7 +62,7 @@ python ./brat_eval.py --f1 ../data/test_set_150 --f2 ../result/training_result_1
 
 python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --model_type bert \
-      --pretrained_model ../models/SDOH_bert_final \
+      --pretrained_model ../models/ner_bert \
       --data_dir ../bio/bio_training_100 \
       --new_model_dir ../models/SDOH_bert_updated_100 \
       --overwrite_model_dir \
@@ -73,7 +75,7 @@ python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --train_batch_size 8 \
       --train_steps 1000 \
       --learning_rate 1e-5 \
-      --num_train_epochs 30 \
+      --num_train_epochs 2 \
       --gradient_accumulation_steps 1 \
       --do_warmup \
       --seed 13 \
