@@ -30,7 +30,7 @@ python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --train_batch_size 8 \
       --train_steps 1000 \
       --learning_rate 1e-5 \
-      --num_train_epochs 2 \
+      --num_train_epochs 30 \
       --gradient_accumulation_steps 1 \
       --do_warmup \
       --seed 13 \
@@ -75,7 +75,7 @@ python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --train_batch_size 8 \
       --train_steps 1000 \
       --learning_rate 1e-5 \
-      --num_train_epochs 2 \
+      --num_train_epochs 30 \
       --gradient_accumulation_steps 1 \
       --do_warmup \
       --seed 13 \
@@ -100,5 +100,5 @@ python3 ../ClinicalTransformerNER/src/run_transformer_batch_prediction.py \
       --do_copy \
       --data_has_offset_information
 
-python ./brat_eval.py --f1 ../data/test_set --f2 ../result/training_result_100_formatted_output >> ${output_dir}/eval_result_training_100.txt
+python ./brat_eval.py --f1 ../data/test_set_100 --f2 ../result/training_result_100_formatted_output >> ${output_dir}/eval_result_training_100.txt
 
