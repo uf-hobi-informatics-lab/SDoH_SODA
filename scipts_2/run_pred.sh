@@ -3,17 +3,21 @@
 #git clone https://github.com/uf-hobi-informatics-lab/ClinicalTransformerNER.git
 #git clone https://github.com/uf-hobi-informatics-lab/NLPreprocessing.git
 
-while getopts :i:d:n:c: flag
+while getopts :in:out:use:c: flag
 do
     case "${flag}" in
-        i) input_dir=${OPTARG};;
+        in) input_dir=${OPTARG};;
+        out) output_dir=${OPTARG};;
+        use) have_re=${OPTARG};;
         c) cuda=${OPTARG};;
     esac
 done
 echo "Input dir: $input_dir";
+echo "Output dir: $output_dir";
+echo "do relation extraction: $have_re";
 echo "CUDA used: $cuda";
 
-output_dir=../results
+#output_dir=../results
 output_name=bio
 
 
@@ -35,23 +39,29 @@ python3 ../ClinicalTransformerNER/src/run_transformer_batch_prediction.py \
       --do_format 1 \
       --do_copy \
       --data_has_offset_information
+mkdir ${output_dir}/result
+mkdir ${output_dir}/result/eval
+#mkdir ${output_dir}/result/RE
+if [ $have_re == 'N' ]
+then
+  python brat_eval.py --f1 $input_dir --f2 '../temp/${output_name}_formatted_output' >> ${output_dir}/result/eval/eval_result.txt
+
+else
+  python3 ./make_relation.py $input_dir $output_name
 
 
-python3 ./make_relation.py $input_dir $output_name
+  bz=4
+  epn=3
+  sc=2
+  dfmm=0
+  model_type=bert
+  pm=bert-large
+  data_dir_re=../temp/${output_name}_aio_th1
+  nmd=../models/re_bert
+  pof=../temp/predictions_${output_name}.txt
+  log=../logs/log_re_${output_name}.txt
 
-
-bz=4
-epn=3
-sc=2
-dfmm=0
-model_type=bert
-pm=bert-large
-data_dir_re=../temp/${output_name}_aio_th1
-nmd=../models/re_bert
-pof=../temp/predictions_${output_name}.txt
-log=../logs/log_re_${output_name}.txt
-
-python3 ../ClinicalTransformerRelationExtraction/src/relation_extraction.py \
+  python3 ../ClinicalTransformerRelationExtraction/src/relation_extraction.py \
                 --model_type $model_type \
                 --data_format_mode $dfmm \
                 --classification_scheme $sc \
@@ -77,19 +87,19 @@ python3 ../ClinicalTransformerRelationExtraction/src/relation_extraction.py \
                 --max_num_checkpoints 0 \
                 --log_file $log
 
-mkdir ${output_dir}/result
-mkdir ${output_dir}/result/eval
-mkdir ${output_dir}/result/RE
+# mkdir ${output_dir}/result
+# mkdir ${output_dir}/result/eval
+  mkdir ${output_dir}/result/RE
 
-edr=../temp/${output_name}_formatted_output
-pod=${output_dir}/result/RE/${output_name}_relation_predicted_results
-python3 ../ClinicalTransformerRelationExtraction/src/data_processing/post_processing.py \
-                --mode mul \
-                --predict_result_file $pof \
-                --entity_data_dir $edr \
-                --test_data_file ${data_dir_re}/test.tsv \
-                --brat_result_output_dir $pod\
-                --log_file $log
+  edr=../temp/${output_name}_formatted_output
+  pod=${output_dir}/result/RE/${output_name}_relation_predicted_results
+  python3 ../ClinicalTransformerRelationExtraction/src/data_processing/post_processing.py \
+                  --mode mul \
+                  --predict_result_file $pof \
+                  --entity_data_dir $edr \
+                  --test_data_file ${data_dir_re}/test.tsv \
+                  --brat_result_output_dir $pod\
+                  --log_file $log
 
-python brat_eval.py --f1 $input_dir --f2 $pod >> ${output_dir}/eval_result.txt
+  python brat_eval.py --f1 $input_dir --f2 $pod >> ${output_dir}/eval_result.txt
 
