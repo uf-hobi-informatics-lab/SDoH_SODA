@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import torch
-from transformer_ner.task import run_task
-from transformer_ner.transfomer_log import TransformerNERLogger
+import warnings
 from traceback import format_exc
 
-from packaging import version
+import torch
 import transformers
+from packaging import version
 
+from transformer_ner.task import run_task
+from transformer_ner.transfomer_log import TransformerNERLogger
 
 pytorch_version = version.parse(transformers.__version__)
 assert pytorch_version >= version.parse('3.0.0'), \
@@ -22,8 +23,11 @@ def main():
     # add arguments
     parser.add_argument("--model_type", default='bert', type=str, required=True,
                         help="valid values: bert, roberta or xlnet")
-    parser.add_argument("--pretrained_model", type=str, required=True,
+    parser.add_argument("--pretrained_model", type=str, default=None,
                         help="The pretrained model file or directory for fine tuning.")
+    # resume training on a NER model if set it will overwrite pretrained_model
+    parser.add_argument("--resume_from_model", type=str, default=None,
+                        help="The NER model file or directory for continuous fine tuning.")
     parser.add_argument("--config_name", default=None, type=str,
                         help="Pretrained config name or path if not the same as pretrained_model")
     parser.add_argument("--tokenizer_name", default=None, type=str,
@@ -61,7 +65,8 @@ def main():
     parser.add_argument("--eval_batch_size", default=8, type=int,
                         help="The batch size for eval.")
     parser.add_argument('--train_steps', type=int, default=-1,
-                        help="Number of trianing steps between two evaluations on the dev set; if <0 then evaluate after each epoch")
+                        help="Number of trianing steps between two evaluations on the dev set; "
+                             "if <0 then evaluate after each epoch")
     parser.add_argument("--learning_rate", default=1e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--num_train_epochs", default=10, type=float,
@@ -87,9 +92,13 @@ def main():
     parser.add_argument("--progress_bar", action='store_true',
                         help="show progress during the training in tqdm")
     parser.add_argument("--early_stop", default=-1, type=int,
-                        help="""The training will stop after num of epoch without performance improvement. If set to 0 or -1, then not use early stop.""")
-
-    # fp16 and distributed training
+                        help="""The training will stop after num of epoch without performance improvement. 
+                        If set to 0 or -1, then not use early stop.""")
+    parser.add_argument('--focal_loss', action='store_true',
+                        help="use focal loss function instead of cross entropy loss")
+    parser.add_argument("--focal_loss_gamma", default=2, type=int,
+                        help="the gamma hyperparameter in focal loss, commonly use 1 or 2")
+    # fp16 and distributed training (we use pytorch naive implementation instead of Apex)
     parser.add_argument('--fp16', action='store_true',
                         help="Whether to use 16-bit float precision instead of 32-bit")
     # parser.add_argument("--fp16_opt_level", type=str, default="O1",
@@ -110,6 +119,14 @@ def main():
     global_args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Task will use cuda device: GPU_{}.".format(torch.cuda.current_device()) if torch.cuda.device_count() else 'Task will use CPU.')
 
+    # if use resume_from_model, then resume_from_model will overwrite pretrained_model
+    if global_args.resume_from_model:
+        global_args.pretrained_model = global_args.resume_from_model
+
+    if global_args.resume_from_model is None and global_args.pretrained_model is None:
+        raise RuntimeError("""Both resume_from_model and pretrained_model are not set.
+        You have to specify one of them.""")
+
     # if args.tokenizer_name and args.config_name are not specially set, set them as pretrained_model
     if not global_args.tokenizer_name:
         global_args.tokenizer_name = global_args.pretrained_model
@@ -121,6 +138,11 @@ def main():
 
     if global_args.do_predict and not global_args.predict_output_file:
         raise RuntimeError("Running prediction but predict output file is not set.")
+
+    if global_args.focal_loss and global_args.use_crf:
+        warnings.warn("Using CRF cannot apply focal loss. CRF has its own loss function.")
+        warnings.warn("We will overwrite focal loss to false and use CRF as default.")
+        global_args.focal_loss = False
 
     try:
         run_task(global_args)

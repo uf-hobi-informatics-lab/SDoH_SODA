@@ -1,4 +1,5 @@
-export CUDA_VISIBLE_DEVICES=0
+# example of training and test
+export CUDA_VISIBLE_DEVICES=1
 
 bz=4
 epn=3
@@ -6,12 +7,12 @@ sc=2
 dfmm=0
 model_type=bert
 pm=bert-base-uncased
-data_dir=/home/zehao.yu/workspace/py3/data/dr_relation_aio_th1
+data_dir=./sample_data
 nmd=./new_model
 pof=./predictions.txt
-log=./logs/log_1.txt
+log=./log.txt
 
-python3 ./src/relation_extraction.py \
+python ./src/relation_extraction.py \
 		--model_type $model_type \
 		--data_format_mode $dfmm \
 		--classification_scheme $sc \
@@ -40,7 +41,7 @@ python3 ./src/relation_extraction.py \
 
 # example of testing and convert predictions to brat
 export CUDA_VISIBLE_DEVICES=1
-python3 ./src/relation_extraction.py \
+python ./src/relation_extraction.py \
 		--model_type $model_type \
 		--data_format_mode $dfmm \
 		--classification_scheme $sc \
@@ -67,7 +68,7 @@ python3 ./src/relation_extraction.py \
 
 edr="./data_annotation_entity_only"
 pod="./predicted_results"
-python3 src/data_processing/post_processing.py \
+python src/data_processing/post_processing.py \
 		--mode mul \
 		--predict_result_file $pof \
 		--entity_data_dir $edr \

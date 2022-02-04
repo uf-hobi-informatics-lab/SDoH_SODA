@@ -3,13 +3,15 @@
 
 import warnings
 from pathlib import Path
-from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
+
 import torch
 from torch.nn import CrossEntropyLoss
-from transformers import (XLNetTokenizer, AlbertTokenizer, RobertaTokenizer,
-                          BertTokenizer, DistilBertTokenizer, LongformerTokenizer,
-                          ElectraTokenizer, BartTokenizer, DebertaTokenizer)
-
+from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
+                              TensorDataset)
+from transformers import (AlbertTokenizer, BartTokenizer, BertTokenizer,
+                          DebertaTokenizer, DistilBertTokenizer,
+                          ElectraTokenizer, LongformerTokenizer,
+                          RobertaTokenizer, XLNetTokenizer)
 
 NEXT_TOKEN = "[next]"
 NEXT_GUARD = -2
@@ -77,7 +79,8 @@ class TransformerNerDataProcessor(object):
         """
         if default in {'bert', 'roberta', 'albert',
                        'distilbert', 'bart', 'xlnet',
-                       'electra', 'deberta', 'longformer'} and not customized_label2idx:
+                       'electra', 'deberta', 'longformer',
+                       'deberta-v2'} and not customized_label2idx:
             # we do not need special label for SEP, using O instead
             # label2idx = {'O': 4, 'X': 3, 'PAD': 0, 'CLS': 1, 'SEP': 2}
             label2idx = {'O': 3, 'X': 2, 'PAD': 0, 'CLS': 1}
@@ -94,7 +97,8 @@ Otherwise will cause prediction error.''')
         _, dev_labels = self._read_data(self.data_dir / "dev.txt", task='train')
 
         if dev_labels.intersection(train_labels) != dev_labels:
-            self.logger.warning("dev set has label ({}) not appeared in train set.".format({e for e in dev_labels if e not in train_labels}))
+            self.logger.warning("dev set has label ({}) not appeared in train set.".format(
+                {e for e in dev_labels if e not in train_labels}))
 
         for lb in sorted(train_labels, key=lambda x: x.split("-")[-1]):
             if lb not in label2idx:

@@ -9,6 +9,7 @@ from tqdm import tqdm
 from functools import partial
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
+from collections import Counter
 
 
 class InputExample(object):
@@ -87,7 +88,7 @@ def convert_examples_to_relation_extraction_features(
     return features
 
 
-def features2tensors(features, logger=None):
+def features2tensors(features, binary_mode=False, logger=None):
     tensor_input_ids = []
     tensor_attention_masks = []
     tensor_token_type_ids = []
@@ -106,14 +107,18 @@ def features2tensors(features, logger=None):
 
     tensor_input_ids = torch.tensor(tensor_input_ids, dtype=torch.long)
     tensor_attention_masks = torch.tensor(tensor_attention_masks, dtype=torch.long)
-    tensor_label_ids = torch.tensor(tensor_label_ids, dtype=torch.long)
     tensor_token_type_ids = torch.tensor(tensor_token_type_ids, dtype=torch.long) if tensor_token_type_ids \
         else torch.zeros(tensor_attention_masks.shape)
+    if binary_mode:
+        dmap = {0: [1, 0], 1: [0, 1]}
+        tensor_label_ids = torch.tensor([dmap[e] for e in tensor_label_ids], dtype=torch.float32)
+    else:
+        tensor_label_ids = torch.tensor(tensor_label_ids, dtype=torch.long)
 
     return TensorDataset(tensor_input_ids, tensor_attention_masks, tensor_token_type_ids, tensor_label_ids)
 
 
-def relation_extraction_data_loader(dataset, batch_size=2, task='train', logger=None):
+def relation_extraction_data_loader(dataset, batch_size=2, task='train', logger=None, binary_mode=False):
     """
     task has two levels:
     train for training using RandomSampler
@@ -122,7 +127,7 @@ def relation_extraction_data_loader(dataset, batch_size=2, task='train', logger=
     if set auto to True we will default call convert_features_to_tensors,
     so features can be directly passed into the function
     """
-    dataset = features2tensors(dataset, logger=logger)
+    dataset = features2tensors(dataset, binary_mode=binary_mode, logger=logger)
 
     if task == 'train':
         sampler = RandomSampler(dataset)
@@ -202,6 +207,21 @@ class DataProcessor(object):
         return self._create_examples(
             self._read_tsv(input_file_name), "test")
 
+    def get_sample_distribution(self, train_file=None):
+        # the distribution will be measured based on training data
+        if train_file:
+            lines = self._read_tsv(train_file)
+        else:
+            lines = self._read_tsv(self.data_dir / "train.tsv")
+
+        labels = []
+        for (i, line) in enumerate(lines):
+            labels.append(line[0])
+        total = len(labels)
+        label2freq = {k: (1-v/total) for k, v in Counter(labels).items()}
+
+        return label2freq
+
     def get_labels(self, train_file=None, label_file=None):
         """
             Gets the list of labels for this data set.
@@ -240,16 +260,22 @@ class DataProcessor(object):
     @staticmethod
     def _read_tsv(input_file, header=True, quotechar=None):
         """Reads a tab separated value file."""
-        lines = []
+        # # implemented with csv reader -> deprecate due to artifacts
+        # lines = []
+        # with open(input_file, "r", encoding="utf-8") as f:
+        #     reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+        #     for line in reader:
+        #         lines.append(line)
+        # if header:
+        #     lines = lines[1:]
+        #
+        # return lines
 
         with open(input_file, "r", encoding="utf-8") as f:
-            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
-            for line in reader:
-                lines.append(line)
-        if header:
-            lines = lines[1:]
-
-        return lines
+            lines = f.readlines()
+            if header:
+                lines = lines[1:]
+            return [line.split("\t") for line in lines]
 
 
 class RelationDataFormatSepProcessor(DataProcessor):

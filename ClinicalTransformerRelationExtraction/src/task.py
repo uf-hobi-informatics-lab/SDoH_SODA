@@ -8,7 +8,7 @@ from data_utils import (features2tensors, relation_extraction_data_loader,
                         batch_to_model_input, RelationDataFormatSepProcessor,
                         RelationDataFormatUniProcessor)
 from utils import acc_and_f1
-from data_processing.io_utils import pkl_save, pkl_load
+from data_processing.io_utils import pkl_save, pkl_load, save_json
 from transformers import glue_convert_examples_to_features as convert_examples_to_relation_extraction_features
 from transformers import get_linear_schedule_with_warmup, get_cosine_schedule_with_warmup
 import torch
@@ -16,7 +16,7 @@ from tqdm import trange, tqdm
 import numpy as np
 from packaging import version
 from pathlib import Path
-from config import SPEC_TAGS, MODEL_DICT
+from config import SPEC_TAGS, MODEL_DICT, VERSION, NEW_ARGS, CONFIG_VERSION_NAME
 import shutil
 
 
@@ -31,6 +31,8 @@ class TaskRunner(object):
         self.dev_data_loader = None
         self.test_data_loader = None
         self.data_processor = None
+        self.new_model_dir_path = Path(self.args.new_model_dir)
+        self.new_model_dir_path.mkdir(parents=True, exist_ok=True)
         self._use_amp_for_fp16_from = 0
 
     def task_runner_default_init(self):
@@ -138,16 +140,15 @@ class TaskRunner(object):
 
             # at each epoch end, we do eval on dev
             if self.args.do_eval:
-                acc, prf, f1 = self.eval(self.args.non_relation_label)
+                acc, pr, f1 = self.eval(self.args.non_relation_label)
                 self.args.logger.info("""
                 ******************************
                 Epcoh: {}
                 evaluation on dev set
                 acc: {}
-                precision, recall, f1:
-                {}
+                {}; f1:{}
                 ******************************
-                """.format(epoch+1, acc, prf))
+                """.format(epoch+1, acc, pr, f1))
                 # max_num_checkpoints > 0, save based on eval
                 # save model
                 if self.args.max_num_checkpoints > 0 and latest_best_score < f1:
@@ -166,10 +167,8 @@ class TaskRunner(object):
         # this is done on dev
         true_labels = np.array([dev_fea.label for dev_fea in self.dev_features])
         preds, eval_loss = self._run_eval(self.dev_data_loader)
-        eval_res = acc_and_f1(labels=true_labels,
-                                 preds=preds,
-                                 label2idx=self.label2idx,
-                                 non_rel_label=non_rel_label)
+        eval_res = acc_and_f1(
+            labels=true_labels, preds=preds, label2idx=self.label2idx, non_rel_label=non_rel_label)
 
         return eval_res
 
@@ -199,10 +198,13 @@ class TaskRunner(object):
         # init config
         unique_labels, label2idx, idx2label = self.data_processor.get_labels()
         self.args.logger.info("label to index:\n{}".format(label2idx))
+        save_json(label2idx, self.new_model_dir_path/"label2idx.json")
         num_labels = len(unique_labels)
         self.label2idx = label2idx
         self.idx2label = idx2label
+
         self.config = config.from_pretrained(self.args.pretrained_model, num_labels=num_labels)
+        self.config.update({CONFIG_VERSION_NAME: VERSION})
         # The number of tokens to cache.
         # The key/value pairs that have already been pre-computed in a previous forward pass won’t be re-computed.
         if self.args.model_type == "xlnet":
@@ -211,7 +213,21 @@ class TaskRunner(object):
             self.config.hidden_dropout_prob = self.config.dropout
         self.config.tags = spec_token_new_ids
         self.config.scheme = self.args.classification_scheme
-
+        # binary mode
+        self.config.binary_mode = self.args.use_binary_classification_mode
+        # focal loss config
+        self.config.use_focal_loss = self.args.use_focal_loss
+        self.config.focal_loss_gamma = self.args.focal_loss_gamma
+        # sample weights in loss functions
+        self.config.balance_sample_weights = self.args.balance_sample_weights
+        if self.args.balance_sample_weights:
+            label2freq = self.data_processor.get_sample_distribution()
+            label_id2freq = {label2idx[k]: v for k, v in label2freq.items()}
+            self.config.sample_weights = np.zeros(len(label2freq))
+            for k, v in label_id2freq.items():
+                self.config.sample_weights[k] = v
+            self.args.logger.info(
+                f"using sample weights: {label_id2freq} and converted weight matrix is {self.config.sample_weights}")
         # init model
         self.model = model.from_pretrained(self.args.pretrained_model, config=self.config)
         self.config.vocab_size = total_token_num
@@ -251,8 +267,7 @@ class TaskRunner(object):
 
     def _init_trained_model(self):
         """initialize a fine-tuned model for prediction"""
-        p = Path(self.args.new_model_dir)
-        dir_list = [d for d in p.iterdir() if d.is_dir()]
+        dir_list = [d for d in self.new_model_dir_path.iterdir() if d.is_dir()]
         latest_ckpt_dir = sorted(dir_list, key=lambda x: int(x.stem.split("_")[-1]))[-1]
 
         self.args.logger.info("Init model from {} for prediction".format(latest_ckpt_dir))
@@ -260,6 +275,10 @@ class TaskRunner(object):
         model, config, tokenizer = self.model_dict[self.args.model_type]
 
         self.config = config.from_pretrained(latest_ckpt_dir)
+        # compatibility check for config arguments
+        if not (self.config.to_dict().get(CONFIG_VERSION_NAME, None) == VERSION):
+            self.config.update(NEW_ARGS)
+
         self.tokenizer = tokenizer.from_pretrained(latest_ckpt_dir, do_lower_case=self.args.do_lower_case)
         self.model = model.from_pretrained(latest_ckpt_dir, config=self.config)
 
@@ -285,9 +304,7 @@ class TaskRunner(object):
                 self.args.fp16 = False
 
     def _save_model(self, epoch=0):
-        p = Path(self.args.new_model_dir)
-        p.mkdir(parents=True, exist_ok=True)
-        dir_to_save = p / f"ckpt_{epoch}"
+        dir_to_save = self.new_model_dir_path / f"ckpt_{epoch}"
 
         self.tokenizer.save_pretrained(dir_to_save)
         self.config.save_pretrained(dir_to_save)
@@ -295,7 +312,7 @@ class TaskRunner(object):
         # save label2idx
         pkl_save((self.label2idx, self.idx2label), dir_to_save/"label_index.pkl")
         # remove extra checkpoints
-        dir_list = [d for d in p.iterdir() if d.is_dir()]
+        dir_list = [d for d in self.new_model_dir_path.iterdir() if d.is_dir()]
         if len(dir_list) > self.args.max_num_checkpoints > 0:
             oldest_ckpt_dir = sorted(dir_list, key=lambda x: int(x.stem.split("_")[-1]))[0]
             shutil.rmtree(oldest_ckpt_dir)
@@ -317,7 +334,10 @@ class TaskRunner(object):
                 loss, logits = batch_output[:2]
                 temp_loss += loss.item()
                 logits = logits.detach().cpu().numpy()
-                preds = logits if preds is None else np.append(preds, logits, axis=0)
+                if preds is None:
+                    preds = logits
+                else:
+                    preds = np.append(preds, logits, axis=0)
 
         batch_iter.close()
         temp_loss = temp_loss / total_sample_num
@@ -358,6 +378,19 @@ class TaskRunner(object):
             examples = self._load_examples_by_task(task)
         return examples
 
+    def reset_dataloader(self, data_dir, has_file_header=None, max_len=None):
+        """
+          allow reset data dir and data file header and max seq len
+        """
+        self.data_processor.set_data_dir(data_dir)
+        if has_file_header:
+            self.data_processor.set_header(has_file_header)
+        if max_len and isinstance(max_len, int) and 0 < max_len <= 512:
+            self.data_processor.set_max_seq_len(max_len)
+        self.args.logger.warning("reset data loader information")
+        self.args.logger.warning("new data loader info: {}".format(self.data_processor))
+        self._init_dataloader()
+
     def _init_dataloader(self):
         if self.args.do_train and self.train_data_loader is None:
             train_examples = self._check_cache(task="train")
@@ -370,7 +403,11 @@ class TaskRunner(object):
                 output_mode="classification")
 
             self.train_data_loader = relation_extraction_data_loader(
-                train_features, batch_size=self.args.train_batch_size, task="train", logger=self.args.logger)
+                train_features,
+                batch_size=self.args.train_batch_size,
+                task="train",
+                logger=self.args.logger,
+                binary_mode=self.args.use_binary_classification_mode)
 
         if self.args.do_eval and self.dev_data_loader is None:
             dev_examples = self._check_cache(task="dev")
@@ -384,7 +421,11 @@ class TaskRunner(object):
             self.dev_features = dev_features
 
             self.dev_data_loader = relation_extraction_data_loader(
-                dev_features, batch_size=self.args.train_batch_size, task="test", logger=self.args.logger)
+                dev_features,
+                batch_size=self.args.train_batch_size,
+                task="test",
+                logger=self.args.logger,
+                binary_mode=self.args.use_binary_classification_mode)
 
         if self.args.do_predict and self.test_data_loader is None:
             test_examples = self._check_cache(task="test")
@@ -397,4 +438,7 @@ class TaskRunner(object):
                 output_mode="classification")
 
             self.test_data_loader = relation_extraction_data_loader(
-                test_features, batch_size=self.args.eval_batch_size, task="test", logger=self.args.logger)
+                test_features,
+                batch_size=self.args.eval_batch_size,
+                task="test", logger=self.args.logger,
+                binary_mode=self.args.use_binary_classification_mode)

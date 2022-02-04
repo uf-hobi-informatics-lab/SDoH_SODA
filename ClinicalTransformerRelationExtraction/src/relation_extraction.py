@@ -5,8 +5,9 @@ import random
 from utils import TransformerLogger
 from task import TaskRunner
 from pathlib import Path
-from data_processing.io_utils import save_text
+from data_processing.io_utils import save_text, save_json
 import traceback
+import warnings
 
 
 def set_seed(gargs):
@@ -15,23 +16,44 @@ def set_seed(gargs):
     torch.manual_seed(gargs.seed)
 
 
-def app(gargs):
-    set_seed(gargs)
-
+def check_args(args):
     # do_eval is used with do_train in most cases for 5-CV
-    if gargs.do_eval and not gargs.do_train:
+    if args.do_eval and not args.do_train:
         raise RuntimeError("Evaluation mode (do_eval) is only available when do_train is used.\n"
                            "You may want to use do_predict instead.")
 
-    # make it case in-sensitive
+    if args.max_num_checkpoints > 0 and not args.do_eval:
+        warnings.warn("Evaluation mode (do_eval) should be set in order to save more than one models."
+                        "We will evaluate at the end of each epoch and save models with better F1-score."
+                        "if do_eval is not set, we will only save one model at the end of training,"
+                        "in this case you have to set max_num_checkpoints=0 (default),"
+                        "We did this for you by setting max_num_checkpoints=0"
+                      )
+        args.max_num_checkpoints = 0
+
+    if args.do_eval and args.max_num_checkpoints < 1:
+        warnings.warn("You set the eval mode so we expect max_num_checkpoints large than 0 so we set it to 1.")
+        args.max_num_checkpoints = 1
+
+    if args.do_train and Path(args.new_model_dir).exists() and not args.overwrite_model_dir:
+        raise RuntimeError("{} is exist and overwrite this dir is not permitted.".format(args.new_model_dir))
+
+    if args.use_binary_classification_mode:
+        line = "*" * 20
+        info = "You turn on the binary mode, make sure you use binary data format."
+        warnings.warn(f"{line}\n{info}\n{line}\n")
+
+
+def app(gargs):
+    set_seed(gargs)
+    check_args(gargs)
+
+    # make model type case in-sensitive
     gargs.model_type = gargs.model_type.lower()
     task_runner = TaskRunner(gargs)
     task_runner.task_runner_default_init()
 
     if gargs.do_train:
-        if Path(gargs.new_model_dir).exists() and not gargs.overwrite_model_dir:
-            raise RuntimeError("{} is exist and overwrite this dir is not permitted.".format(gargs.new_model_dir))
-
         # training
         try:
             task_runner.train()
@@ -59,13 +81,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     # parse arguments
     parser.add_argument("--model_type", default='bert', type=str, required=True,
-                        help="valid values: bert, roberta, albert or xlnet")
+                        help="valid values: bert, roberta, albert, xlnet, megatron, deberta, longformer")
     parser.add_argument("--data_format_mode", default=0, type=int,
                         help="valid values: 0: sep mode - [CLS]S1[SEP]S2[SEP]; 1: uni mode - [CLS]S1S2[SEP]")
     parser.add_argument("--classification_scheme", default=2, type=int,
                         help="special tokens used for classification. "
                              "Valid values: "
-                             "0: [CLS]; 1: [CLS], [S1], [S2]; 2: [CLS], [S1], [S2], [E1], [E2]; 3: [S1], [S2]")
+                             "0: [CLS]; 1: [CLS], [S1], [S2]; 2: [CLS], [S1], [E1], [S2], [E2]; 3: [S1], [S2]")
     parser.add_argument("--pretrained_model", type=str,
                         help="The pretrained model file or directory for fine tuning.")
     parser.add_argument("--data_dir", type=str, required=True,
@@ -134,8 +156,24 @@ if __name__ == '__main__':
     parser.add_argument("--fp16_opt_level", type=str, default="O1",
                         help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
                              "See details at https://nvidia.github.io/apex/amp.html")
+    parser.add_argument('--use_focal_loss', action='store_true',
+                        help="Whether to use focal loss function to replace cross entropy loss function")
+    parser.add_argument("--focal_loss_gamma", default=2, type=int,
+                        help="focussing parameter used in focal loss function")
+    parser.add_argument('--use_binary_classification_mode', action='store_true',
+                        help="if use this mode, we will use BCEWithLogitsLoss or binary focal loss functions.")
+    parser.add_argument('--balance_sample_weights', action='store_true',
+                        help="Whether to create sample weights and pass it to loss functions")
+    # using pytorch ddp
+    # parser.add_argument('--ddp', action='store_true',
+    #                     help="Whether to use Distributed Data Parallel")
+    # parser.add_argument('--local_rank', default=-1, type=int,
+    #                     help="local rank ID")
 
     args = parser.parse_args()
+    # save the experiment arguments into a file under new model dir
+    Path(args.new_model_dir).mkdir(exist_ok=True, parents=True)
+    save_json(vars(args), Path(args.new_model_dir) / "training_arguments.json")
 
     # other setup
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
