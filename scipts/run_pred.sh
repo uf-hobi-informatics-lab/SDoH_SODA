@@ -24,7 +24,7 @@ python3 ./run_ner.py $input_dir $output_name
 input_dir=../temp/encoding_txt/
 python3 ../ClinicalTransformerNER/src/run_transformer_batch_prediction.py \
       --model_type bert \
-      --pretrained_model ../model/SDOH_bert_final \
+      --pretrained_model ../models/ner_bert \
       --raw_text_dir $input_dir \
       --preprocessed_text_dir ../temp/${output_name} \
       --output_dir ../temp/out/${output_name} \
