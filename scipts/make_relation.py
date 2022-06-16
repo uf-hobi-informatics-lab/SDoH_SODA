@@ -417,8 +417,9 @@ sdoh_valid_comb = {
         ('Living_Condition', 'Sdoh_status')
     }
 
-test_root=f'../temp/{output_name}_formatted_output'
+test_root=f'../temp/out/{output_name}_formatted_output'
 preds = create_test_samples(test_root, None, sdoh_valid_comb)
+print('number of pairs',len(preds))
 all_in_one(preds, dn=output_name, do_train=False)
 
 

@@ -112,6 +112,8 @@ class RecordTrack2(object):
                     else:
                         print(self.path)
                         print(line)
+#                     print(self.path, line)
+#                     print(tag_start)
                     tag_start, tag_end = int(tag_start), int(tag_end)
                     annotations['tags'][tag_id] = ClinicalConcept(tag_id, tag_start, tag_end, tag_type, tag_text)
             for line_num, line in enumerate(lines):
