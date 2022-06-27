@@ -86,7 +86,7 @@ python3 ../ClinicalTransformerRelationExtraction/src/relation_extraction.py \
 mkdir ${output_dir}/result
 mkdir ${output_dir}/result/eval
 mkdir ${output_dir}/result/RE
-
+#
 edr=../temp/out/${output_name}_formatted_output
 pod=${output_dir}/result/RE/${output_name}_relation_predicted_results
 python3 ../ClinicalTransformerRelationExtraction/src/data_processing/post_processing.py \
@@ -97,11 +97,11 @@ python3 ../ClinicalTransformerRelationExtraction/src/data_processing/post_proces
                 --brat_result_output_dir $pod\
                 --log_file $log
 
-python brat_eval.py --f1 $input_dir --f2 $pod >> ${output_dir}/eval_result.txt
+python brat_eval.py --f1 $eva_dir --f2 $pod >> ${output_dir}/eval_result.txt #compare the eva_dir with RE result
 echo output file location $pod
 else
 echo no relation candidate pairs
-python brat_eval.py --f1 $eva_dir --f2 ../temp/out/${output_name}_formatted_output >> ${output_dir}/eval_result.txt
+python brat_eval.py --f1 $eva_dir --f2 ../temp/out/${output_name}_formatted_output >> ${output_dir}/eval_result.txt #compare eva_dir with NER result
 
 
 fi
