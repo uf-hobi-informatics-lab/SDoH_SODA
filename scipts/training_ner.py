@@ -101,7 +101,7 @@ for fid in train_dev_ids:
                     lines_used = lines_used+['T'+str(i)+'\t'+entity_name+' '+entity_num+'\t'+line.split('\t',2)[2]]
                     i+=1
             if line[0]=='R':
-                lines_used = lines_used+line
+                lines_used = lines_used+[line]
     with open(ann_fn1,'w') as f1:
         f1.writelines(lines_used)
     
@@ -125,7 +125,7 @@ for fid in test_ids:
                     lines_used = lines_used+['T'+str(i)+'\t'+entity_name+' '+entity_num+'\t'+line.split('\t',2)[2]]
                     i+=1
             if line[0]=='R':
-                lines_used = lines_used+line
+                lines_used = lines_used+[line]
     with open(ann_fn1,'w') as f1:
         f1.writelines(lines_used)
 #save the statistics result for training and test
