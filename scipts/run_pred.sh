@@ -21,11 +21,11 @@ mkdir $output_dir
 export CUDA_VISIBLE_DEVICES=$cuda
 eva_dir=input_dir
 python3 ./run_ner.py $input_dir $output_name
-input_dir=../temp/encoding_txt/
+input_dir_2=../temp/encoding_txt/
 python3 ../ClinicalTransformerNER/src/run_transformer_batch_prediction.py \
       --model_type bert \
       --pretrained_model ../models/ner_bert \
-      --raw_text_dir $input_dir \
+      --raw_text_dir $input_dir_2 \
       --preprocessed_text_dir ../temp/${output_name} \
       --output_dir ../temp/out/${output_name} \
       --max_seq_length 128 \
