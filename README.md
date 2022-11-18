@@ -31,6 +31,21 @@ bash run_pred.sh -i <input data directory> -c gpu_id
 - gpu_id is the id where you want to run the program. e.g, 0 - use the GPU with id as 0
 - if GPU is not available, try -1 to use CPU which is slow but should work.
 
+# Use of fine-tuning on new dataset
+- download the models and unzip into this project root directory, you should have:
+    - ./models/ner_bert
+    - ./models/re_bert
+- then, cd to the ```./scripts``` directory
+- execute pipeline as 
+```shell
+bash training_process.sh -i <input data directory> -c gpu_id
+```
+- "input data directory" is the location of the data you annotated (*.txt and *.ann) e.g., ./test_data
+- gpu_id is the id where you want to run the program. e.g, 0 - use the GPU with id as 0
+- if GPU is not available, try -1 to use CPU which is slow but should work.
+- the notes would do train-test split as 1:1 
+- the model would located at ../models/SDOH_bert_updated_100/
+- the notes for prediction at ../results/test_result_formatted_output/
 
 # Results
 - in the main directory (./SDoH_NLPend2end), we will create three directories for outputs
