@@ -1,4 +1,5 @@
 #training from pre-trained model on 1FL dataset
+#input file should be the folder of notes files and which cuda used
 while getopts :i:d:n:c: flag
 do
     case "${flag}" in
@@ -14,6 +15,7 @@ output_name=bio_training
 
 mkdir ../models/SDOH_bert_updated_100
 #mkdir ${output_dir}
+#used to geneate bio file used for NER
 python3 ./training_ner.py $input_dir 
 
 # training process on 1:1 split 
@@ -43,7 +45,7 @@ python3 ../ClinicalTransformerNER/src/run_transformer_ner.py \
       --progress_bar \
       --early_stop 3 
 
-
+# predict on test notes
 python3 ../ClinicalTransformerNER/src/run_transformer_batch_prediction.py \
       --model_type bert \
       --pretrained_model ../models/SDOH_bert_updated_100 \
