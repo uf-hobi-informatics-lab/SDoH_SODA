@@ -52,3 +52,4 @@ bash training_process.sh -i <input data directory> -c gpu_id
 - the first is ./logs which saves all the running logs
 - the second is ./temp which saves all the intermediate generated files
 - the third is ./results where the eval_results.txt stores the final performance measurement and the rest directories are the e2e outputs
+- For the tasks with prediction only, there would be no eval_results
