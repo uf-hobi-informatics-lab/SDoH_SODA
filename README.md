@@ -6,7 +6,9 @@
 # Models
 - we have two models trained for NER and Relation
 - Both models base on BERT architecture with different classifiers
-- we provide models based on request
+- we provide models on Huggingface:
+-   NER:https://huggingface.co/nvbic/SODA_BERT_NER
+-   RE:https://huggingface.co/nvbic/SODA_BERT_RE
 - contact: zehao.yu@ufl.edu; alexgre@ufl.edu; yonghui.wu@ufl.edu
 
 
